@@ -1,8 +1,7 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from 'firebase/auth';
-import { get, ref, set, goOffline, goOnline } from 'firebase/database';
+import { get, ref, set, update, goOffline, goOnline } from 'firebase/database';
 import { getFirebase } from './firebase';
 let registrationName = '';
-
 
 // Restores a missing database profile after an interrupted registration.
 export async function ensureProfile(account, name) {
@@ -43,6 +42,25 @@ export async function logout() {
   try { await signOut(auth); } catch (error) {
     goOnline(db);
     throw error;
+  }
+}
+
+export async function updateUserProfile(uid, { name, avatar }) {
+  const { auth, db } = getFirebase();
+  const updates = {};
+  if (name !== undefined) {
+    if (!name.trim()) { throw new Error('Họ tên không được để trống.'); }
+    updates.name = name.trim();
+  }
+  if (avatar !== undefined) {
+    updates.avatar = avatar;
+  }
+  await update(ref(db, `users/${uid}`), updates);
+  if (auth.currentUser) {
+    const authProfileUpdates = {};
+    if (name) { authProfileUpdates.displayName = name.trim(); }
+    if (avatar) { authProfileUpdates.photoURL = avatar; }
+    await updateProfile(auth.currentUser, authProfileUpdates).catch(() => {});
   }
 }
 

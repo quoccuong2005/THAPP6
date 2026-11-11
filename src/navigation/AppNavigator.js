@@ -16,48 +16,51 @@ import ContactsScreen from '../screens/ContactsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ChatDetailScreen from '../screens/ChatDetailScreen';
+import CreateGroupScreen from '../screens/CreateGroupScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+function TabBarIcon({ routeName, focused, color }) {
+  let iconName;
+  if (routeName === 'Home') {
+    iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+  } else if (routeName === 'Contacts') {
+    iconName = focused ? 'people' : 'people-outline';
+  } else if (routeName === 'Notifications') {
+    iconName = focused ? 'notifications' : 'notifications-outline';
+  } else if (routeName === 'Settings') {
+    iconName = focused ? 'settings' : 'settings-outline';
+  }
+  return <Ionicons name={iconName} size={22} color={color} />;
+}
+
+const getScreenOptions = ({ route }) => ({
+  headerShown: false,
+  tabBarActiveTintColor: '#4F46E5',
+  tabBarInactiveTintColor: '#9CA3AF',
+  tabBarStyle: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#E5E7EB',
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 6,
+  },
+  tabBarLabelStyle: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  tabBarIcon: ({ focused, color }) => (
+    <TabBarIcon routeName={route.name} focused={focused} color={color} />
+  ),
+});
 
 // Bottom Tabs Navigator (Home, Danh bạ, Thông báo, Cài đặt)
 function MainTabNavigator() {
   const { totalUnreadMessages, totalUnreadNotifications } = useApp();
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#9CA3AF',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E5E7EB',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Contacts') {
-            iconName = focused ? 'people' : 'people-outline';
-          } else if (route.name === 'Notifications') {
-            iconName = focused ? 'notifications' : 'notifications-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
-          return <Ionicons name={iconName} size={22} color={color} />;
-        },
-      })}
-    >
+    <Tab.Navigator screenOptions={getScreenOptions}>
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -105,30 +108,46 @@ function MainTabNavigator() {
 // Root Stack Navigator
 export default function AppNavigator() {
   const { user, authLoading, syncError } = useApp();
-  if (authLoading) { return <View style={styles.loading}><ActivityIndicator size="large" color="#4F46E5" /><Text>Đang khôi phục đăng nhập…</Text></View>; }
+  if (authLoading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text>Đang khôi phục đăng nhập…</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
       {user && syncError ? <Text accessibilityRole="alert" style={styles.error}>{syncError}</Text> : null}
-    <NavigationContainer>
-      <Stack.Navigator
-        key={user ? user.id : 'guest'}
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      >
-        {user ? <>
-          <Stack.Screen name="Main" component={MainTabNavigator} />
-          <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-        </> : <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </>}
-      </Stack.Navigator>
-    </NavigationContainer>
+      <NavigationContainer>
+        <Stack.Navigator
+          key={user ? user.id : 'guest'}
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        >
+          {user ? (
+            <>
+              <Stack.Screen name="Main" component={MainTabNavigator} />
+              <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+              <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
     </View>
   );
 }
 
-const styles = StyleSheet.create({ root: { flex: 1 }, loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }, error: { color: '#B91C1C', backgroundColor: '#FEF2F2', padding: 12 } });
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  error: { color: '#B91C1C', backgroundColor: '#FEF2F2', padding: 12 },
+});

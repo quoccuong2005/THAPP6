@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApps, initializeApp } from 'firebase/app';
 import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
-import { firebaseConfig } from './firebaseConfig';
+import { firebaseConfig } from './firebaseConfig.js';
 
 export const firebaseConfigured = ['apiKey', 'projectId', 'appId', 'databaseURL']
   .every(key => Boolean(firebaseConfig[key]?.trim()));

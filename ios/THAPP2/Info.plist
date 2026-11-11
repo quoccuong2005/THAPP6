@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>TH Chat cần vị trí hiện tại để gửi cho người bạn đang trò chuyện khi bạn nhấn nút gửi vị trí.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>TH Chat cần máy ảnh để chụp và gửi ảnh trong cuộc trò chuyện.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TH Chat cần truy cập thư viện để chọn và gửi ảnh trong cuộc trò chuyện.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

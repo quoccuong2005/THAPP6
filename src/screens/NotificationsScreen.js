@@ -6,13 +6,14 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useApp } from '../context/AppContext';
+import { formatTime } from '../services/chatModel';
 
-export default function NotificationsScreen() {
+export default function NotificationsScreen({ navigation }) {
   const {
     notifications,
     markNotificationAsRead,
@@ -24,29 +25,34 @@ export default function NotificationsScreen() {
 
   const filteredNotifications = useMemo(() => {
     if (filterType === 'unread') {
-      return notifications.filter((n) => !n.isRead);
+      return notifications.filter(n => !n.read);
     }
     return notifications;
   }, [notifications, filterType]);
 
-  const getNotificationIcon = (type) => {
+  const getNotificationIcon = type => {
     switch (type) {
       case 'message':
         return { name: 'chatbubble-ellipses', color: '#4F46E5', bg: '#EEF2FF' };
-      case 'friend':
-        return { name: 'person-add', color: '#10B981', bg: '#ECFDF5' };
-      case 'system':
-        return { name: 'information-circle', color: '#3B82F6', bg: '#EFF6FF' };
-      case 'security':
-        return { name: 'shield-checkmark', color: '#F59E0B', bg: '#FFFBEB' };
+      case 'group':
+        return { name: 'people', color: '#10B981', bg: '#ECFDF5' };
+      case 'reaction':
+        return { name: 'heart', color: '#EF4444', bg: '#FEF2F2' };
       default:
         return { name: 'notifications', color: '#6B7280', bg: '#F3F4F6' };
     }
   };
 
+  const handleOpenNotification = item => {
+    markNotificationAsRead(item.id);
+    if (item.convId) {
+      navigation.navigate('ChatDetail', { convId: item.convId });
+    }
+  };
+
   const renderNotificationItem = ({ item }) => {
     const iconConfig = getNotificationIcon(item.type);
-    const isUnread = !item.isRead;
+    const isUnread = !item.read;
 
     return (
       <TouchableOpacity
@@ -54,7 +60,7 @@ export default function NotificationsScreen() {
           styles.notifItem,
           isUnread ? styles.notifItemUnread : styles.notifItemRead,
         ]}
-        onPress={() => markNotificationAsRead(item.id)}
+        onPress={() => handleOpenNotification(item)}
         activeOpacity={0.7}
       >
         {/* Icon đại diện loại thông báo */}
@@ -89,7 +95,7 @@ export default function NotificationsScreen() {
           <View style={styles.footerRow}>
             <View style={styles.timeWrapper}>
               <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-              <Text style={styles.timeText}>{item.time}</Text>
+              <Text style={styles.timeText}>{formatTime(item.createdAt)}</Text>
             </View>
 
             {/* Nút/Nhãn trạng thái */}
@@ -116,7 +122,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
@@ -143,16 +149,16 @@ export default function NotificationsScreen() {
         )}
       </View>
 
-      {/* Thanh bộ lọc: Tất cả / Chưa đọc */}
-      <View style={styles.filterBar}>
+      {/* Bộ lọc tab: Tất cả / Chưa đọc */}
+      <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
+          style={[styles.tabButton, filterType === 'all' && styles.tabButtonActive]}
           onPress={() => setFilterType('all')}
         >
           <Text
             style={[
-              styles.filterTabText,
-              filterType === 'all' && styles.filterTabTextActive,
+              styles.tabText,
+              filterType === 'all' && styles.tabTextActive,
             ]}
           >
             Tất cả ({notifications.length})
@@ -160,64 +166,64 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterTab, filterType === 'unread' && styles.filterTabActive]}
+          style={[
+            styles.tabButton,
+            filterType === 'unread' && styles.tabButtonActive,
+          ]}
           onPress={() => setFilterType('unread')}
         >
           <Text
             style={[
-              styles.filterTabText,
-              filterType === 'unread' && styles.filterTabTextActive,
+              styles.tabText,
+              filterType === 'unread' && styles.tabTextActive,
             ]}
           >
             Chưa đọc ({totalUnreadNotifications})
           </Text>
-          {totalUnreadNotifications > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{totalUnreadNotifications}</Text>
-            </View>
-          )}
         </TouchableOpacity>
       </View>
 
       {/* Danh sách thông báo */}
       <FlatList
         data={filteredNotifications}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderNotificationItem}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={56} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>
-              {filterType === 'unread'
-                ? 'Không có thông báo chưa đọc'
-                : 'Chưa có thông báo nào'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {filterType === 'unread'
-                ? 'Bạn đã đọc toàn bộ thông báo!'
-                : 'Các thông báo mới sẽ xuất hiện tại đây'}
-            </Text>
-          </View>
-        }
+        ItemSeparatorComponent={ItemSeparator}
+        ListEmptyComponent={EmptyNotifications}
       />
     </SafeAreaView>
+  );
+}
+
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
+function EmptyNotifications() {
+  return (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="notifications-off-outline" size={60} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>Không có thông báo nào</Text>
+      <Text style={styles.emptySubtitle}>
+        Bạn đã cập nhật hết tất cả tin tức mới nhất!
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
@@ -237,81 +243,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    gap: 4,
   },
   markAllText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#4F46E5',
+    marginLeft: 4,
   },
-  filterBar: {
+  tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    marginBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
-    gap: 10,
   },
-  filterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+  tabButton: {
+    paddingVertical: 10,
+    marginRight: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  filterTabActive: {
-    backgroundColor: '#4F46E5',
+  tabButtonActive: {
+    borderBottomColor: '#4F46E5',
   },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4B5563',
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
   },
-  filterTabTextActive: {
-    color: '#FFFFFF',
-  },
-  filterBadge: {
-    backgroundColor: '#EF4444',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 6,
-  },
-  filterBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  tabTextActive: {
+    color: '#4F46E5',
     fontWeight: '700',
   },
   listContent: {
-    paddingVertical: 10,
+    flexGrow: 1,
   },
   notifItem: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    marginHorizontal: 12,
-    marginVertical: 4,
-    borderRadius: 14,
   },
   notifItemUnread: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#C7D2FE',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: '#F5F3FF',
   },
   notifItemRead: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    opacity: 0.85,
   },
   iconWrapper: {
     width: 44,
@@ -319,31 +295,31 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   contentWrapper: {
     flex: 1,
   },
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    marginBottom: 2,
   },
   notifTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#374151',
     flex: 1,
   },
   notifTitleUnread: {
-    fontWeight: '800',
     color: '#111827',
+    fontWeight: '700',
   },
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#4F46E5',
     marginLeft: 8,
   },
@@ -354,8 +330,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   notifContentUnread: {
-    color: '#374151',
-    fontWeight: '500',
+    color: '#4B5563',
   },
   footerRow: {
     flexDirection: 'row',
@@ -365,11 +340,11 @@ const styles = StyleSheet.create({
   timeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   timeText: {
     fontSize: 12,
     color: '#9CA3AF',
+    marginLeft: 4,
   },
   statusLabelContainer: {
     flexDirection: 'row',
@@ -380,43 +355,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#EEF2FF',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
-    gap: 3,
   },
   markReadText: {
     fontSize: 11,
-    fontWeight: '600',
     color: '#4F46E5',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   readBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
   },
   readBadgeText: {
     fontSize: 11,
     color: '#9CA3AF',
+    marginLeft: 4,
   },
   separator: {
-    height: 4,
+    height: 1,
+    backgroundColor: '#F3F4F6',
   },
   emptyContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 70,
-    paddingHorizontal: 20,
+    paddingVertical: 80,
+    paddingHorizontal: 30,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#374151',
-    marginTop: 12,
+    marginTop: 14,
   },
-  emptyText: {
+  emptySubtitle: {
     fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 4,
     textAlign: 'center',
+    marginTop: 6,
   },
 });

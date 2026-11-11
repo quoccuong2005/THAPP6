@@ -23,28 +23,32 @@ export default function HomeScreen({ navigation }) {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.toLowerCase().trim();
     return conversations.filter(
-      (conv) =>
+      conv =>
         conv.user.name.toLowerCase().includes(q) ||
-        conv.lastMessage.toLowerCase().includes(q)
+        (conv.lastMessage && conv.lastMessage.toLowerCase().includes(q))
     );
   }, [conversations, searchQuery]);
 
   // Danh sách bạn bè đang trực tuyến
   const onlineUsers = useMemo(() => {
-    return contacts.filter((c) => c.isOnline);
+    return contacts.filter(c => c.isOnline);
   }, [contacts]);
 
-  const handleOpenConversation = (conversation) => {
-    navigation.navigate('ChatDetail', { peerId: conversation.user.id });
+  const handleOpenConversation = conversation => {
+    if (conversation.type === 'group' || conversation.user.isGroup) {
+      navigation.navigate('ChatDetail', { convId: conversation.id });
+    } else {
+      navigation.navigate('ChatDetail', { convId: conversation.id, peerId: conversation.user.id });
+    }
   };
 
-  const handleOpenDirectChat = (contact) => {
-    // Tìm cuộc trò chuyện sẵn có hoặc tạo mới
+  const handleOpenDirectChat = contact => {
     navigation.navigate('ChatDetail', { peerId: contact.id });
   };
 
   const renderConversationItem = ({ item }) => {
     const isUnread = item.unreadCount > 0;
+    const isGroup = item.type === 'group' || item.user.isGroup;
 
     return (
       <TouchableOpacity
@@ -54,16 +58,29 @@ export default function HomeScreen({ navigation }) {
       >
         {/* Avatar + Trạng thái trực tuyến */}
         <View style={styles.avatarContainer}>
-          <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
+          {isGroup ? (
+            <View style={styles.groupAvatarWrapper}>
+              <Ionicons name="people" size={24} color="#4F46E5" />
+            </View>
+          ) : (
+            <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
+          )}
           {item.user.isOnline && <View style={styles.onlineBadge} />}
         </View>
 
         {/* Nội dung tin nhắn */}
         <View style={styles.convContent}>
           <View style={styles.convHeaderRow}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {item.user.name}
-            </Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {item.user.name}
+              </Text>
+              {isGroup && (
+                <View style={styles.groupTag}>
+                  <Text style={styles.groupTagText}>Nhóm</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.timeText, isUnread && styles.timeTextUnread]}>
               {item.time}
             </Text>
@@ -74,10 +91,11 @@ export default function HomeScreen({ navigation }) {
               style={[
                 styles.lastMessage,
                 isUnread && styles.lastMessageUnread,
+                item.lastMessage === 'Tin nhắn đã được thu hồi' && styles.recalledText,
               ]}
               numberOfLines={1}
             >
-              {item.lastMessage}
+              {item.lastMessage || 'Bắt đầu cuộc trò chuyện'}
             </Text>
 
             {/* Số lượng tin nhắn chưa đọc */}
@@ -106,12 +124,22 @@ export default function HomeScreen({ navigation }) {
             {conversations.length} cuộc trò chuyện
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.headerIconBtn}
-          onPress={() => navigation.navigate('Contacts')}
-        >
-          <Ionicons name="create-outline" size={22} color="#4F46E5" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('CreateGroup')}
+            accessibilityLabel="Tạo nhóm chat"
+          >
+            <Ionicons name="people-outline" size={22} color="#4F46E5" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerIconBtn, styles.headerIconBtnMargin]}
+            onPress={() => navigation.navigate('Contacts')}
+            accessibilityLabel="Danh bạ"
+          >
+            <Ionicons name="create-outline" size={22} color="#4F46E5" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Ô tìm kiếm cuộc trò chuyện */}
@@ -141,7 +169,7 @@ export default function HomeScreen({ navigation }) {
             horizontal
             showsHorizontalScrollIndicator={false}
             data={onlineUsers}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             contentContainerStyle={styles.onlineList}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -164,21 +192,29 @@ export default function HomeScreen({ navigation }) {
       {/* Danh sách các cuộc trò chuyện */}
       <FlatList
         data={filteredConversations}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderConversationItem}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubble-ellipses-outline" size={56} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>Không tìm thấy cuộc trò chuyện</Text>
-            <Text style={styles.emptyText}>
-              Thử tìm kiếm với tên hoặc từ khóa khác
-            </Text>
-          </View>
-        }
+        ItemSeparatorComponent={ItemSeparator}
+        ListEmptyComponent={EmptyList}
       />
     </SafeAreaView>
+  );
+}
+
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
+function EmptyList() {
+  return (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="chatbubble-ellipses-outline" size={56} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện nào</Text>
+      <Text style={styles.emptyText}>
+        Nhấn vào biểu tượng danh bạ hoặc tạo nhóm để bắt đầu nhắn tin
+      </Text>
+    </View>
   );
 }
 
@@ -206,6 +242,10 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerIconBtn: {
     width: 40,
     height: 40,
@@ -213,6 +253,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerIconBtnMargin: {
+    marginLeft: 8,
   },
   searchContainer: {
     paddingHorizontal: 18,
@@ -250,21 +293,20 @@ const styles = StyleSheet.create({
   },
   onlineList: {
     paddingHorizontal: 14,
+    gap: 14,
   },
   onlineUserItem: {
     alignItems: 'center',
-    marginHorizontal: 6,
     width: 62,
   },
   onlineAvatarWrapper: {
     position: 'relative',
+    marginBottom: 4,
   },
   onlineAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    borderWidth: 2,
-    borderColor: '#4F46E5',
   },
   onlineDot: {
     position: 'absolute',
@@ -279,13 +321,13 @@ const styles = StyleSheet.create({
   },
   onlineName: {
     fontSize: 12,
-    fontWeight: '500',
     color: '#374151',
-    marginTop: 4,
+    fontWeight: '500',
     textAlign: 'center',
   },
   listContent: {
-    paddingBottom: 20,
+    paddingVertical: 6,
+    flexGrow: 1,
   },
   convItem: {
     flexDirection: 'row',
@@ -295,17 +337,25 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+    marginRight: 14,
   },
   avatar: {
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: '#E5E7EB',
+  },
+  groupAvatarWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   onlineBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: 2,
+    right: 2,
     width: 14,
     height: 14,
     borderRadius: 7,
@@ -315,7 +365,6 @@ const styles = StyleSheet.create({
   },
   convContent: {
     flex: 1,
-    marginLeft: 14,
     justifyContent: 'center',
   },
   convHeaderRow: {
@@ -324,12 +373,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
     marginRight: 8,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    maxWidth: '75%',
+  },
+  groupTag: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  groupTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4F46E5',
   },
   timeText: {
     fontSize: 12,
@@ -348,20 +414,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   lastMessageUnread: {
     color: '#111827',
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  recalledText: {
+    fontStyle: 'italic',
+    color: '#9CA3AF',
   },
   unreadBadge: {
     backgroundColor: '#4F46E5',
+    borderRadius: 12,
     minWidth: 20,
     height: 20,
-    borderRadius: 10,
+    paddingHorizontal: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
   },
   unreadBadgeText: {
     color: '#FFFFFF',
@@ -377,18 +447,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#374151',
     marginTop: 12,
   },
   emptyText: {
     fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 4,
     textAlign: 'center',
+    marginTop: 4,
   },
 });

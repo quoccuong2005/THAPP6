@@ -24,15 +24,14 @@ export default function ContactsScreen({ navigation }) {
     let result = contacts;
 
     if (filterType === 'online') {
-      result = result.filter((c) => c.isOnline);
+      result = result.filter(c => c.isOnline);
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
-        (c) =>
+        c =>
           c.name.toLowerCase().includes(q) ||
-
           c.email.toLowerCase().includes(q)
       );
     }
@@ -41,7 +40,7 @@ export default function ContactsScreen({ navigation }) {
   }, [contacts, filterType, searchQuery]);
 
   // Nhấn vào một người dùng để mở cuộc trò chuyện tương ứng
-  const handleSelectContact = (contact) => {
+  const handleSelectContact = contact => {
     navigation.navigate('ChatDetail', { peerId: contact.id });
   };
 
@@ -58,7 +57,7 @@ export default function ContactsScreen({ navigation }) {
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: item.isOnline ? '#10B981' : '#9CA3AF' },
+              item.isOnline ? styles.onlineColor : styles.offlineColor,
             ]}
           />
         </View>
@@ -82,7 +81,7 @@ export default function ContactsScreen({ navigation }) {
             <View
               style={[
                 styles.badgeIndicator,
-                { backgroundColor: item.isOnline ? '#10B981' : '#6B7280' },
+                item.isOnline ? styles.onlineColor : styles.offlineColor,
               ]}
             />
             <Text
@@ -99,7 +98,7 @@ export default function ContactsScreen({ navigation }) {
             style={styles.chatButton}
             onPress={() => handleSelectContact(item)}
           >
-            <Ionicons name="chatbubble-ellipses" size={18} color="#4F46E5" />
+            <Ionicons name="chatbubble-ellipses" size={16} color="#4F46E5" />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -115,21 +114,25 @@ export default function ContactsScreen({ navigation }) {
         <View>
           <Text style={styles.headerTitle}>Danh bạ</Text>
           <Text style={styles.headerSubtitle}>
-            {contacts.length} người liên hệ
+            {contacts.length} người dùng trên hệ thống
           </Text>
         </View>
-        <TouchableOpacity style={styles.addContactBtn}>
-          <Ionicons name="person-add-outline" size={20} color="#4F46E5" />
+        <TouchableOpacity
+          style={styles.createGroupBtn}
+          onPress={() => navigation.navigate('CreateGroup')}
+        >
+          <Ionicons name="people" size={18} color="#4F46E5" />
+          <Text style={styles.createGroupText}>Tạo nhóm</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Thanh tìm kiếm danh bạ */}
-      <View style={styles.searchSection}>
+      {/* Ô tìm kiếm */}
+      <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm theo tên hoặc email..."
+            placeholder="Tìm theo tên hoặc email..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -142,16 +145,16 @@ export default function ContactsScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Bộ lọc: Tất cả / Đang trực tuyến */}
-      <View style={styles.filterRow}>
+      {/* Bộ lọc tab */}
+      <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.filterChip, filterType === 'all' && styles.filterChipActive]}
+          style={[styles.tabButton, filterType === 'all' && styles.tabButtonActive]}
           onPress={() => setFilterType('all')}
         >
           <Text
             style={[
-              styles.filterChipText,
-              filterType === 'all' && styles.filterChipTextActive,
+              styles.tabText,
+              filterType === 'all' && styles.tabTextActive,
             ]}
           >
             Tất cả ({contacts.length})
@@ -159,17 +162,19 @@ export default function ContactsScreen({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterChip, filterType === 'online' && styles.filterChipActive]}
+          style={[
+            styles.tabButton,
+            filterType === 'online' && styles.tabButtonActive,
+          ]}
           onPress={() => setFilterType('online')}
         >
-          <View style={styles.onlineDotSmall} />
           <Text
             style={[
-              styles.filterChipText,
-              filterType === 'online' && styles.filterChipTextActive,
+              styles.tabText,
+              filterType === 'online' && styles.tabTextActive,
             ]}
           >
-            Đang trực tuyến ({contacts.filter((c) => c.isOnline).length})
+            Đang trực tuyến ({contacts.filter(c => c.isOnline).length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -177,19 +182,27 @@ export default function ContactsScreen({ navigation }) {
       {/* Danh sách người dùng */}
       <FlatList
         data={filteredContacts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderContactItem}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={56} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>Không tìm thấy người dùng</Text>
-            <Text style={styles.emptyText}>Thử tìm kiếm với tên hoặc từ khóa khác</Text>
-          </View>
-        }
+        ItemSeparatorComponent={ItemSeparator}
+        ListEmptyComponent={EmptyContacts}
       />
     </SafeAreaView>
+  );
+}
+
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
+function EmptyContacts() {
+  return (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="people-outline" size={56} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>Không tìm thấy người dùng</Text>
+      <Text style={styles.emptyText}>Thử tìm kiếm với tên hoặc từ khóa khác</Text>
+    </View>
   );
 }
 
@@ -202,9 +215,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
@@ -217,17 +230,23 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  addContactBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center',
+  createGroupBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  searchSection: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+  createGroupText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4F46E5',
+    marginLeft: 6,
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   searchBar: {
     flexDirection: 'row',
@@ -245,84 +264,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111827',
   },
-  filterRow: {
+  tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 18,
-    paddingBottom: 10,
-    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+  tabButton: {
+    paddingVertical: 10,
+    marginRight: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  filterChipActive: {
-    backgroundColor: '#4F46E5',
+  tabButtonActive: {
+    borderBottomColor: '#4F46E5',
   },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4B5563',
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
   },
-  filterChipTextActive: {
-    color: '#FFFFFF',
-  },
-  onlineDotSmall: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 6,
+  tabTextActive: {
+    color: '#4F46E5',
+    fontWeight: '700',
   },
   listContent: {
-    paddingBottom: 24,
+    flexGrow: 1,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 12,
   },
   avatarWrapper: {
     position: 'relative',
+    marginRight: 14,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#E5E7EB',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   statusDot: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  onlineColor: {
+    backgroundColor: '#10B981',
+  },
+  offlineColor: {
+    backgroundColor: '#9CA3AF',
+  },
   infoWrapper: {
     flex: 1,
-    marginLeft: 14,
   },
   contactName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 3,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   contactBio: {
     fontSize: 13,
     color: '#6B7280',
+    marginTop: 2,
   },
   actionWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -330,6 +346,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    marginRight: 8,
   },
   onlineBadge: {
     backgroundColor: '#ECFDF5',
@@ -341,11 +358,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 5,
+    marginRight: 4,
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   onlineBadgeText: {
     color: '#059669',
@@ -364,24 +381,25 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginLeft: 84,
+    marginLeft: 82,
   },
   emptyContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingVertical: 80,
+    paddingHorizontal: 30,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#374151',
-    marginTop: 12,
+    marginTop: 14,
   },
   emptyText: {
     fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 4,
     textAlign: 'center',
+    marginTop: 6,
   },
 });
